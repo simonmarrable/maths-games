@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maths Game Classroom</title>
+<style>
+  :root { --primary:#6c5ce7; --accent:#fd79a8; --ok:#00b894; --bad:#d63031; --warn:#f39c12; --text:#2d3436; --muted:#636e72; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; color:var(--text);
+         background:linear-gradient(135deg,#a8c0ff 0%,#3f2b96 100%); min-height:100vh; }
+  .wrap { max-width:1000px; margin:0 auto; padding:1.5rem 1rem; }
+  .card { background:#fff; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,.2); padding:2rem; }
+  h1 { color:var(--primary); margin:.2rem 0 1rem; }
+  h2 { margin:.2rem 0 1rem; color:var(--primary); }
+  .tabs { display:flex; gap:.5rem; margin-bottom:1.2rem; }
+  .tab { flex:1; padding:.8rem; border:2px solid #dfe6e9; background:#fff; border-radius:10px; font-weight:bold; cursor:pointer; font-size:1rem; }
+  .tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+  label { display:block; font-weight:600; margin:.8rem 0 .3rem; }
+  input { width:100%; padding:.8rem; font-size:1.05rem; border:2px solid #dfe6e9; border-radius:10px; outline:none; }
+  input:focus { border-color:var(--primary); }
+  .btn { background:var(--primary); color:#fff; border:none; padding:.9rem 1.6rem; font-size:1.05rem; font-weight:bold; border-radius:10px; cursor:pointer; margin-top:1rem; }
+  .btn:hover { background:#5b4bc4; }
+  .btn.ghost { background:#eef2f7; color:var(--text); }
+  .btn.small { padding:.5rem 1rem; font-size:.9rem; margin:0; }
+  .err { color:var(--bad); font-weight:600; min-height:1.2rem; margin-top:.6rem; }
+  .banner { background:#fff8e7; border:1px dashed #ffe082; border-radius:10px; padding:.7rem 1rem; font-size:.9rem; margin-bottom:1rem; }
+  .hidden { display:none !important; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .games { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; }
+  .game { border:2px solid #eef2f7; border-radius:16px; padding:1.2rem; cursor:pointer; text-align:center; transition:.15s; background:#fafbff; }
+  .game:hover { border-color:var(--primary); transform:translateY(-3px); }
+  .game .emoji { font-size:2.6rem; }
+  iframe { width:100%; height:78vh; border:0; border-radius:14px; background:#f8f9fa; }
+  table { width:100%; border-collapse:collapse; font-size:.95rem; }
+  th,td { text-align:left; padding:.6rem .5rem; border-bottom:1px solid #eef2f7; }
+  th { color:var(--muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; cursor:pointer; }
+  .bar { background:#eef2f7; border-radius:8px; height:12px; width:100%; min-width:80px; overflow:hidden; }
+  .bar > div { height:100%; border-radius:8px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#b2bec3; }
+  .dot.on { background:var(--ok); }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.8rem; margin-bottom:1.2rem; }
+  .kpi { background:#f1f2f6; border-radius:12px; padding:.9rem; text-align:center; }
+  .kpi b { display:block; font-size:1.7rem; color:var(--primary); }
+  .scroll { overflow-x:auto; }
+  .muted { color:var(--muted); font-size:.85rem; }
+  .pill { display:inline-block; background:#fdeaea; color:var(--bad); border-radius:20px; padding:.1rem .6rem; font-size:.8rem; margin-right:.3rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ LOGIN ============ -->
+  <div id="loginView" class="card" style="max-width:520px;margin:6vh auto 0;">
+    <h1>🎓 Maths Game Classroom</h1>
+    <div id="demoBanner" class="banner hidden">⚠️ <b>Demo mode:</b> no backend connected. Progress is saved only in this browser. See setup notes to connect Google Sheets.</div>
+    <div class="tabs">
+      <button class="tab active" id="tabStudent" onclick="showTab('student')">I'm a student</button>
+      <button class="tab" id="tabTeacher" onclick="showTab('teacher')">I'm the teacher</button>
+    </div>
+
+    <div id="studentForm">
+      <label for="sCode">Class code</label>
+      <input id="sCode" placeholder="e.g. MATH7A" autocomplete="off" maxlength="20">
+      <label for="sName">Your first name (and initial)</label>
+      <input id="sName" placeholder="e.g. Sam K" autocomplete="off" maxlength="30">
+      <button class="btn" onclick="studentJoin()">Join class</button>
+    </div>
+
+    <div id="teacherForm" class="hidden">
+      <label for="tCode">Class code to view</label>
+      <input id="tCode" placeholder="e.g. MATH7A" autocomplete="off" maxlength="20">
+      <label for="tKey">Teacher key</label>
+      <input id="tKey" type="password" placeholder="The TEACHER_KEY you set" autocomplete="off">
+      <button class="btn" onclick="teacherOpen()">Open dashboard</button>
+    </div>
+    <div class="err" id="loginErr"></div>
+  </div>
+
+  <!-- ============ STUDENT ============ -->
+  <div id="studentView" class="card hidden">
+    <div class="topbar">
+      <div><b id="hello"></b> <span class="muted" id="codeLabel"></span></div>
+      <div>
+        <button class="btn ghost small" id="backBtn" onclick="backToMenu()">← All games</button>
+        <button class="btn ghost small" onclick="logout()">Log out</button>
+      </div>
+    </div>
+    <div id="menu">
+      <h2>Choose a game</h2>
+      <div class="games" id="gameList"></div>
+    </div>
+    <iframe id="gameFrame" class="hidden" title="Game"></iframe>
+  </div>
+
+  <!-- ============ TEACHER ============ -->
+  <div id="teacherView" class="card hidden">
+    <div class="topbar">
+      <h2 style="margin:0">📈 Class <span id="tCodeLabel"></span></h2>
+      <div>
+        <span class="muted" id="updated"></span>
+        <button class="btn small" onclick="loadResults()">Refresh</button>
+        <button class="btn ghost small" onclick="exportCsv()">Export CSV</button>
+        <button class="btn ghost small" onclick="logout()">Close</button>
+      </div>
+    </div>
+    <div class="err" id="dashErr"></div>
+    <div class="kpis">
+      <div class="kpi"><b id="kStudents">0</b>Students joined</div>
+      <div class="kpi"><b id="kOnline">0</b>Active now</div>
+      <div class="kpi"><b id="kAnswers">0</b>Answers given</div>
+      <div class="kpi"><b id="kAcc">–</b>Class accuracy</div>
+    </div>
+
+    <h3>Students</h3>
+    <div class="scroll">
+      <table id="studentTable">
+        <thead><tr>
+          <th onclick="sortBy('name')">Student</th>
+          <th onclick="sortBy('answers')">Answers</th>
+          <th onclick="sortBy('acc')">Accuracy</th>
+          <th onclick="sortBy('best')">Best streak</th>
+          <th onclick="sortBy('last')">Last active</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:2rem">Question analysis <span class="muted">(hardest first – shows common wrong answers)</span></h3>
+    <div class="scroll">
+      <table id="qTable">
+        <thead><tr><th>Question</th><th>Attempts</th><th>Correct</th><th>Common mistakes</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ================== CONFIG ==================
+   Paste your Google Apps Script Web App URL between the quotes.
+   Leave empty to run in single-browser demo mode. */
+const BACKEND_URL = "";
+
+/* Add more games here. Each game is an HTML file in the same folder. */
+const GAMES = [
+  { id: "data-classifying", title: "Data Classifier Quest", emoji: "📊",
+    desc: "Nominal, ordinal, discrete or continuous?", url: "data-classifying.html" },
+  { id: "data-detective", title: "Data Detective", emoji: "🔍",
+    desc: "Read stem-and-leaf plots to solve clues", url: "data-detective.html" },
+  { id: "food-truck", title: "Food Truck Tycoon", emoji: "🚚",
+    desc: "Compare median and range to pick a winner", url: "food-truck.html" },
+  { id: "frequency-frenzy", title: "Frequency Frenzy", emoji: "🍕",
+    desc: "Turn frequency tables into sector angles", url: "frequency-frenzy.html" },
+  { id: "outlier-heist", title: "The Outlier Heist", emoji: "🕵️",
+    desc: "See how an outlier changes mean, median, mode, range", url: "outlier-heist.html" }
+  // Add more games here: { id, title, emoji, desc, url }
+];
+
+const ONLINE_MS = 60000, REFRESH_MS = 10000;
+let session = null, queue = [], currentGame = null, timer = null, sortKey = "name", sortAsc = true, lastRows = [];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function gameTitle(id){ const g = GAMES.find(x => x.id === id); return g ? g.title : id; }
+function show(id){ ["loginView","studentView","teacherView"].forEach(v => $(v).classList.toggle("hidden", v !== id)); }
+function showTab(t){
+  $("tabStudent").classList.toggle("active", t==="student");
+  $("tabTeacher").classList.toggle("active", t==="teacher");
+  $("studentForm").classList.toggle("hidden", t!=="student");
+  $("teacherForm").classList.toggle("hidden", t!=="teacher");
+  $("loginErr").textContent = "";
+}
+if (!BACKEND_URL) $("demoBanner").classList.remove("hidden");
+
+/* ================== TRANSPORT ================== */
+async function sendEvents(events){
+  if (!events.length) return true;
+  if (!BACKEND_URL) {
+    const all = JSON.parse(localStorage.getItem("demo_events") || "[]").concat(events);
+    localStorage.setItem("demo_events", JSON.stringify(all.slice(-5000)));
+    return true;
+  }
+  try {
+    // text/plain avoids a CORS preflight, which Apps Script cannot answer
+    await fetch(BACKEND_URL, { method:"POST", mode:"no-cors", body: JSON.stringify({ events }) });
+    return true;
+  } catch(e){ return false; }
+}
+async function flush(){
+  if (!queue.length) return;
+  const batch = queue.splice(0, 50);
+  const ok = await sendEvents(batch);
+  if (!ok) queue = batch.concat(queue);   // retry next time
+}
+setInterval(flush, 3000);
+window.addEventListener("pagehide", flush);
+
+async function fetchResults(code, key){
+  if (!BACKEND_URL) {
+    return JSON.parse(localStorage.getItem("demo_events") || "[]").filter(e => e.code === code);
+  }
+  const url = BACKEND_URL + "?action=results&code=" + encodeURIComponent(code) + "&key=" + encodeURIComponent(key);
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "Request failed");
+  return data.events;
+}
+
+/* ================== STUDENT ================== */
+function studentJoin(){
+  const code = $("sCode").value.trim().toUpperCase();
+  const name = $("sName").value.trim();
+  if (!/^[A-Z0-9]{3,20}$/.test(code)) return $("loginErr").textContent = "Enter the class code from your teacher (letters/numbers).";
+  if (name.length < 2) return $("loginErr").textContent = "Please enter your name.";
+  session = { role:"student", code, name };
+  sessionStorage.setItem("session", JSON.stringify(session));
+  queue.push(ev("join", {}));
+  enterStudent();
+}
+function ev(type, extra){
+  return Object.assign({ time: Date.now(), code: session.code, name: session.name, game: currentGame ? currentGame.id : "", type }, extra);
+}
+function enterStudent(){
+  $("hello").textContent = "Hi, " + session.name + "!";
+  $("codeLabel").textContent = "Class " + session.code;
+  const list = $("gameList"); list.innerHTML = "";
+  GAMES.forEach(g => {
+    const d = document.createElement("div"); d.className = "game";
+    d.innerHTML = '<div class="emoji">' + esc(g.emoji) + '</div><b>' + esc(g.title) + '</b><div class="muted">' + esc(g.desc) + '</div>';
+    d.onclick = () => launch(g);
+    list.appendChild(d);
+  });
+  backToMenu(); show("studentView");
+}
+function launch(g){
+  currentGame = g;
+  $("menu").classList.add("hidden");
+  $("gameFrame").classList.remove("hidden");
+  $("gameFrame").src = g.url;
+  $("backBtn").classList.remove("hidden");
+  queue.push(ev("join", {}));  // heartbeat: shows which game they're in
+}
+function backToMenu(){
+  currentGame = null;
+  $("gameFrame").classList.add("hidden"); $("gameFrame").src = "about:blank";
+  $("menu").classList.remove("hidden");
+  $("backBtn").classList.add("hidden");
+}
+// Games report progress via postMessage
+window.addEventListener("message", e => {
+  const d = e.data;
+  if (!session || session.role !== "student" || !d || d.source !== "mathgame") return;
+  if (e.source !== $("gameFrame").contentWindow) return;
+  if (d.type === "answer") {
+    queue.push(ev("answer", {
+      game: d.game || (currentGame && currentGame.id) || "",
+      qid: d.questionId, question: d.question, selected: d.selected,
+      correct: d.correct === true, score: d.score, streak: d.streak
+    }));
+  }
+});
+// Light heartbeat so "active now" stays accurate while a student is thinking
+setInterval(() => { if (session && session.role==="student" && currentGame) queue.push(ev("join", {})); }, 30000);
+
+/* ================== TEACHER ================== */
+function teacherOpen(){
+  const code = $("tCode").value.trim().toUpperCase(), key = $("tKey").value;
+  if (!code) return $("loginErr").textContent = "Enter the class code.";
+  if (BACKEND_URL && !key) return $("loginErr").textContent = "Enter your teacher key.";
+  session = { role:"teacher", code, key };
+  $("tCodeLabel").textContent = code;
+  show("teacherView");
+  loadResults();
+  timer = setInterval(loadResults, REFRESH_MS);
+}
+async function loadResults(){
+  if (!session || session.role !== "teacher") return;
+  try {
+    const rows = await fetchResults(session.code, session.key);
+    $("dashErr").textContent = "";
+    lastRows = rows;
+    render(rows);
+    $("updated").textContent = "Updated " + new Date().toLocaleTimeString() + " ";
+  } catch(e){
+    $("dashErr").textContent = "Could not load results: " + e.message;
+    if (String(e.message).includes("unauthorized")) { logout(); $("loginErr").textContent = "Wrong teacher key."; showTab("teacher"); }
+  }
+}
+function aggregate(rows){
+  const students = {}, qs = {};
+  rows.forEach(r => {
+    const s = students[r.name] || (students[r.name] = { name:r.name, answers:0, correct:0, best:0, last:0 });
+    s.last = Math.max(s.last, r.time);
+    if (r.type === "answer") {
+      s.answers++; if (r.correct) s.correct++;
+      s.best = Math.max(s.best, Number(r.streak) || 0);
+      const k = r.game + "|" + r.qid;
+      const q = qs[k] || (qs[k] = { game:r.game, qid:r.qid, text:r.question, total:0, correct:0, wrong:{} });
+      q.total++; if (r.correct) q.correct++; else q.wrong[r.selected] = (q.wrong[r.selected]||0) + 1;
+    }
+  });
+  Object.values(students).forEach(s => s.acc = s.answers ? s.correct / s.answers : -1);
+  return { students: Object.values(students), qs: Object.values(qs) };
+}
+function accColor(a){ return a >= .8 ? "var(--ok)" : a >= .5 ? "var(--warn)" : "var(--bad)"; }
+function rel(t){
+  const s = Math.round((Date.now() - t) / 1000);
+  if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60) + " min ago";
+  if (s < 86400) return Math.floor(s/3600) + " h ago"; return new Date(t).toLocaleDateString();
+}
+function sortBy(k){ sortAsc = (sortKey === k) ? !sortAsc : (k === "name"); sortKey = k; render(lastRows); }
+function render(rows){
+  const { students, qs } = aggregate(rows);
+  const now = Date.now();
+  const tot = students.reduce((a,s) => a + s.answers, 0), cor = students.reduce((a,s) => a + s.correct, 0);
+  $("kStudents").textContent = students.length;
+  $("kOnline").textContent = students.filter(s => now - s.last < ONLINE_MS).length;
+  $("kAnswers").textContent = tot;
+  $("kAcc").textContent = tot ? Math.round(cor / tot * 100) + "%" : "–";
+
+  students.sort((a,b) => {
+    const x = a[sortKey], y = b[sortKey];
+    const c = typeof x === "string" ? x.localeCompare(y) : x - y;
+    return sortAsc ? c : -c;
+  });
+  const tb = document.querySelector("#studentTable tbody"); tb.innerHTML = "";
+  students.forEach(s => {
+    const tr = document.createElement("tr");
+    const pct = s.acc < 0 ? 0 : Math.round(s.acc * 100);
+    tr.innerHTML =
+      '<td><span class="dot ' + (now - s.last < ONLINE_MS ? "on" : "") + '"></span>' + esc(s.name) + '</td>' +
+      '<td>' + s.answers + '</td>' +
+      '<td>' + (s.acc < 0 ? '<span class="muted">no answers yet</span>' :
+        '<div style="display:flex;align-items:center;gap:8px"><div class="bar"><div style="width:' + pct + '%;background:' + accColor(s.acc) + '"></div></div><b>' + pct + '%</b></div>') + '</td>' +
+      '<td>' + s.best + '</td><td>' + esc(rel(s.last)) + '</td>';
+    tb.appendChild(tr);
+  });
+  if (!students.length) tb.innerHTML = '<tr><td colspan="5" class="muted">No students have joined this class code yet.</td></tr>';
+
+  qs.sort((a,b) => (a.correct/a.total) - (b.correct/b.total));
+  const qb = document.querySelector("#qTable tbody"); qb.innerHTML = "";
+  qs.forEach(q => {
+    const pct = Math.round(q.correct / q.total * 100);
+    const wrong = Object.entries(q.wrong).sort((a,b) => b[1]-a[1]).map(([k,v]) => '<span class="pill">' + esc(k) + ' ×' + v + '</span>').join("");
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td><span class="muted">' + esc(gameTitle(q.game)) + '</span><br>' + esc(q.text) + '</td><td>' + q.total + '</td><td><b style="color:' + accColor(q.correct/q.total) + '">' + pct + '%</b></td><td>' + (wrong || '<span class="muted">–</span>') + '</td>';
+    qb.appendChild(tr);
+  });
+  if (!qs.length) qb.innerHTML = '<tr><td colspan="4" class="muted">Question data appears once students answer.</td></tr>';
+}
+function exportCsv(){
+  const { students } = aggregate(lastRows);
+  const csvCell = v => '"' + String(v).replace(/"/g,'""') + '"';
+  const lines = [["Student","Answers","Correct","Accuracy %","Best streak","Last active"].map(csvCell).join(",")];
+  students.forEach(s => lines.push([s.name, s.answers, s.correct, s.acc<0?"":Math.round(s.acc*100), s.best, new Date(s.last).toLocaleString()].map(csvCell).join(",")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type:"text/csv" }));
+  a.download = "class-" + session.code + "-progress.csv"; a.click();
+}
+
+/* ================== SESSION ================== */
+function logout(){
+  flush(); clearInterval(timer); session = null; currentGame = null;
+  sessionStorage.removeItem("session");
+  $("gameFrame").src = "about:blank";
+  show("loginView");
+}
+(function restore(){
+  const s = sessionStorage.getItem("session");
+  if (s) { session = JSON.parse(s); if (session.role === "student") enterStudent(); }
+})();
+</script>
+</body>
+</html>

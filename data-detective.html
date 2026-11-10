@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Detective: Stem-and-Leaf</title>
+  <style>
+    :root {
+      --primary: #2c3e50;
+      --accent: #2980b9;
+      --success: #27ae60;
+      --bg: #eef2f3;
+    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .container { background: white; border-radius: 16px; padding: 2rem; max-width: 550px; width: 100%; box-shadow: 0 8px 20px rgba(0,0,0,0.1); text-align: center; position: relative; }
+    h1 { color: var(--primary); margin-bottom: 0.5rem; }
+    
+    .progress-bar { width: 100%; background: #dfe6e9; height: 12px; border-radius: 6px; overflow: hidden; margin: 15px 0; }
+    .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease; }
+
+    .stem-plot { background: #fdfdfd; border: 2px solid var(--primary); width: 220px; margin: 1rem auto; border-radius: 8px; padding: 10px; font-family: monospace; font-size: 1.3rem; text-align: left; }
+    .stem-row { display: flex; padding: 4px 0; }
+    .stem { font-weight: bold; border-right: 3px solid var(--primary); padding-right: 12px; width: 40px; text-align: right; }
+    .leaves { padding-left: 12px; letter-spacing: 6px; }
+    .key { font-size: 0.9rem; color: #7f8c8d; font-style: italic; margin-top: 5px; }
+
+    input[type="number"] { width: 80%; padding: 0.8rem; font-size: 1rem; border-radius: 6px; border: 2px solid #ccc; margin-bottom: 10px; text-align: center; }
+    input[type="number"]:focus { border-color: var(--accent); outline: none; }
+    .btn { background: var(--accent); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; width: 85%; transition: 0.2s; }
+    .btn:hover { background: #1c5980; }
+    
+    .feedback { margin-top: 1rem; font-weight: bold; min-height: 30px; white-space: pre-line; }
+    
+    /* End Screen Styling */
+    .congrats-box { display: none; text-align: center; padding: 2rem 1rem; }
+    .congrats-box h2 { color: var(--success); font-size: 2rem; margin-bottom: 0.5rem; }
+    .congrats-box p { font-size: 1.2rem; color: var(--primary); margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div id="gameContent">
+      <h1>🔍 Data Detective</h1>
+      <div style="font-weight: bold; color: #7f8c8d;">Question <span id="qNum">1</span> of 8</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+      <div class="stem-plot" id="plotDisplay"></div>
+      <div class="key">Key: 1 | 2 = 12</div>
+
+      <div style="margin: 1.5rem 0;">
+        <p id="questionText" style="font-weight: bold; color: var(--primary); font-size: 1.1rem;"></p>
+        <input type="number" id="answerInput" placeholder="Enter your answer..." step="any">
+        <button class="btn" onclick="check()">Submit Clue 🔓</button>
+      </div>
+
+      <div id="feedback" class="feedback"></div>
+    </div>
+
+    <div id="congratsScreen" class="congrats-box">
+      <h2>🎉 Congratulations!</h2>
+      <p>You solved all 8 clues and completed the Data Detective Quest!</p>
+      <button class="btn" style="background: var(--success);" onclick="restartGame()">Play Again 🔄</button>
+    </div>
+  </div>
+
+  <script>
+    let dataset = [];
+    let currentQuestion = {};
+    let questionCount = 1;
+    const TOTAL_QUESTIONS = 8;
+
+    function generatePlot() {
+      // Generate dataset and force a unique mode
+      let attempts = 0;
+      let valid = false;
+
+      while(!valid && attempts < 100) {
+        attempts++;
+        dataset = [];
+        const count = 12 + Math.floor(Math.random() * 4);
+        for(let i=0; i<count; i++) {
+          dataset.push(Math.floor(Math.random() * 35) + 10);
+        }
+        dataset.sort((a,b) => a - b);
+
+        // Check mode counts to ensure unimodal dataset
+        let counts = {};
+        dataset.forEach(x => counts[x] = (counts[x] || 0) + 1);
+        let maxCount = 0;
+        let modes = [];
+        for(let k in counts) {
+          if(counts[k] > maxCount) {
+            maxCount = counts[k];
+            modes = [Number(k)];
+          } else if(counts[k] === maxCount) {
+            modes.push(Number(k));
+          }
+        }
+
+        // Only accept if max count > 1 and exactly ONE unique mode exists
+        if(maxCount > 1 && modes.length === 1) {
+          valid = true;
+        }
+      }
+
+      // Build Stem-and-Leaf UI
+      const plotMap = {};
+      dataset.forEach(num => {
+        let stem = Math.floor(num / 10);
+        let leaf = num % 10;
+        if(!plotMap[stem]) plotMap[stem] = [];
+        plotMap[stem].push(leaf);
+      });
+
+      let html = "";
+      Object.keys(plotMap).sort().forEach(stem => {
+        html += `<div class="stem-row">
+          <div class="stem">${stem}</div>
+          <div class="leaves">${plotMap[stem].join(" ")}</div>
+        </div>`;
+      });
+      document.getElementById("plotDisplay").innerHTML = html;
+
+      // Select question type
+      const qTypes = ["count", "range", "median", "mode"];
+      const chosen = qTypes[(questionCount - 1) % qTypes.length]; // cycle through types
+
+      if(chosen === "count") {
+        const threshold = Math.floor(Math.random() * 20) + 15;
+        const ans = dataset.filter(x => x >= threshold).length;
+        currentQuestion = { text: `How many values are GREATER THAN OR EQUAL TO ${threshold}?`, ans: ans };
+      } else if(chosen === "range") {
+        const range = dataset[dataset.length - 1] - dataset[0];
+        currentQuestion = { text: "What is the RANGE of this data set?", ans: range };
+      } else if(chosen === "median") {
+        let mid = Math.floor(dataset.length / 2);
+        let med = dataset.length % 2 === 0 ? (dataset[mid-1] + dataset[mid])/2 : dataset[mid];
+        currentQuestion = { text: "What is the MEDIAN value in the plot?", ans: med };
+      } else if(chosen === "mode") {
+        let counts = {};
+        dataset.forEach(x => counts[x] = (counts[x]||0) + 1);
+        let maxCount = 0, mode = dataset[0];
+        for(let k in counts) {
+          if(counts[k] > maxCount) { maxCount = counts[k]; mode = Number(k); }
+        }
+        currentQuestion = { text: "What is the MODE (single most frequent number)?", ans: mode };
+      }
+
+      currentQuestion.type = chosen;
+      document.getElementById("questionText").textContent = currentQuestion.text;
+      document.getElementById("qNum").textContent = questionCount;
+      document.getElementById("progressFill").style.width = `${((questionCount - 1) / TOTAL_QUESTIONS) * 100}%`;
+    }
+
+    // ---- Classroom platform reporting (safe to leave in when played standalone) ----
+    const GAME_ID = "data-detective";
+    let _score = 0, _streak = 0;
+    function reportAnswer(qid, question, selected, isCorrect) {
+      _score += isCorrect ? 10 : 0;
+      _streak = isCorrect ? _streak + 1 : 0;
+      if (window.parent === window) return; // not inside the classroom platform
+      window.parent.postMessage({
+        source: "mathgame", game: GAME_ID, type: "answer",
+        questionId: qid, question: question, selected: String(selected),
+        correct: isCorrect, score: _score, streak: _streak
+      }, "*");
+    }
+
+    const Q_LABELS = {
+      count: "Stem-and-leaf: count values above a threshold",
+      range: "Stem-and-leaf: find the range",
+      median: "Stem-and-leaf: find the median",
+      mode: "Stem-and-leaf: find the mode"
+    };
+
+    function check() {
+      const userVal = parseFloat(document.getElementById("answerInput").value);
+      const fb = document.getElementById("feedback");
+
+      if(isNaN(userVal)) {
+        fb.textContent = "Please enter a valid number!";
+        fb.style.color = "#c0392b";
+        return;
+      }
+
+      if(Math.abs(userVal - currentQuestion.ans) < 0.1) {
+        reportAnswer(currentQuestion.type, Q_LABELS[currentQuestion.type], userVal, true);
+        fb.textContent = "🎉 Correct! Detective clue solved!";
+        fb.style.color = "#27ae60";
+
+        setTimeout(() => {
+          questionCount++;
+          document.getElementById("answerInput").value = "";
+          fb.textContent = "";
+
+          if(questionCount > TOTAL_QUESTIONS) {
+            document.getElementById("gameContent").style.display = "none";
+            document.getElementById("congratsScreen").style.display = "block";
+          } else {
+            generatePlot();
+          }
+        }, 1500);
+      } else {
+        reportAnswer(currentQuestion.type, Q_LABELS[currentQuestion.type], userVal, false);
+        fb.textContent = `❌ Incorrect. Re-check the plot stems and leaves!`;
+        fb.style.color = "#c0392b";
+      }
+    }
+
+    function restartGame() {
+      questionCount = 1;
+      document.getElementById("congratsScreen").style.display = "none";
+      document.getElementById("gameContent").style.display = "block";
+      generatePlot();
+    }
+
+    generatePlot();
+  </script>
+</body>
+</html>

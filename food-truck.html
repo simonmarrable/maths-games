@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Truck Tycoon 🚚</title>
+  <style>
+    :root {
+      --primary: #d35400;
+      --accent: #f39c12;
+      --success: #27ae60;
+      --bg: #fff8e7;
+    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: white; border-radius: 16px; padding: 2rem; max-width: 650px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
+    h1 { color: var(--primary); margin-bottom: 0.5rem; }
+    
+    .progress-bar { width: 100%; background: #f0e4d7; height: 12px; border-radius: 6px; overflow: hidden; margin: 15px 0; }
+    .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease; }
+
+    .truck-comparison { display: flex; justify-content: space-around; margin: 1.5rem 0; gap: 12px; }
+    .truck-box { background: #fdfefe; border: 2px solid var(--accent); border-radius: 12px; padding: 1rem; width: 48%; box-sizing: border-box; }
+    .truck-title { font-weight: bold; font-size: 1.2rem; color: var(--primary); margin-bottom: 0.5rem; }
+    .data-list { font-family: monospace; font-size: 1.1rem; background: #fcf3cf; padding: 8px; border-radius: 6px; margin: 10px 0; }
+    
+    .btn-choice { background: var(--accent); color: white; border: none; padding: 0.8rem; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 5px; font-size: 1rem; transition: 0.2s; }
+    .btn-choice:hover { background: #e67e22; }
+    
+    .feedback { margin-top: 1rem; font-weight: bold; font-size: 1.05rem; min-height: 40px; }
+
+    .congrats-box { display: none; text-align: center; padding: 2rem 1rem; }
+    .congrats-box h2 { color: var(--success); font-size: 2.2rem; margin-bottom: 0.5rem; }
+    .congrats-box p { font-size: 1.2rem; color: #2c3e50; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div id="gameContent">
+      <h1>🚚 Food Truck Tycoon</h1>
+      <div style="font-weight: bold; color: #7f8c8d;">Decision <span id="roundNum">1</span> of 8</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+      <div style="font-weight: bold; color: #2c3e50; font-size: 1.1rem; margin-top: 10px;" id="scenarioText">Loading festival data...</div>
+
+      <div class="truck-comparison">
+        <div class="truck-box">
+          <div class="truck-title">🌮 Taco Truck</div>
+          <div>Customer Ratings:</div>
+          <div class="data-list" id="tacoData"></div>
+          <button class="btn-choice" onclick="selectTruck('taco')">Choose Tacos</button>
+        </div>
+
+        <div class="truck-box">
+          <div class="truck-title">🍔 Burger Truck</div>
+          <div>Customer Ratings:</div>
+          <div class="data-list" id="burgerData"></div>
+          <button class="btn-choice" onclick="selectTruck('burger')">Choose Burgers</button>
+        </div>
+      </div>
+
+      <div id="feedback" class="feedback"></div>
+    </div>
+
+    <div id="congratsScreen" class="congrats-box">
+      <h2>🎉 Festival Tycoon Master!</h2>
+      <p>Awesome work! You completed all 8 business rounds using data analysis!</p>
+      <button class="btn-choice" style="background: var(--success); width: 60%; margin: 0 auto;" onclick="restartGame()">Play Again 🔄</button>
+    </div>
+  </div>
+
+  <script>
+    let tacoRatings = [];
+    let burgerRatings = [];
+    let currentGoal = ""; 
+    let currentRound = 1;
+    const TOTAL_ROUNDS = 8;
+
+    function calcMedian(arr) {
+      let s = [...arr].sort((a,b)=>a-b);
+      let mid = Math.floor(s.length/2);
+      return s.length % 2 === 0 ? (s[mid-1]+s[mid])/2 : s[mid];
+    }
+
+    function calcRange(arr) {
+      let s = [...arr].sort((a,b)=>a-b);
+      return s[s.length-1] - s[0];
+    }
+
+    function setupRound() {
+      tacoRatings = Array.from({length: 5}, () => Math.floor(Math.random() * 5) + 5);
+      burgerRatings = Array.from({length: 5}, () => Math.floor(Math.random() * 5) + 5);
+
+      const goals = ["higher_median", "more_consistent"];
+      currentGoal = goals[(currentRound - 1) % goals.length];
+
+      if(currentGoal === "higher_median") {
+        document.getElementById("scenarioText").textContent = "Goal: Select the truck with the HIGHER MEDIAN customer rating!";
+      } else {
+        document.getElementById("scenarioText").textContent = "Goal: Select the truck with MORE CONSISTENT ratings (SMALLER RANGE)!";
+      }
+
+      document.getElementById("tacoData").textContent = tacoRatings.join(", ");
+      document.getElementById("burgerData").textContent = burgerRatings.join(", ");
+      document.getElementById("roundNum").textContent = currentRound;
+      document.getElementById("progressFill").style.width = `${((currentRound - 1) / TOTAL_ROUNDS) * 100}%`;
+    }
+
+    // ---- Classroom platform reporting (safe to leave in when played standalone) ----
+    const GAME_ID = "food-truck";
+    let _score = 0, _streak = 0;
+    function reportAnswer(qid, question, selected, isCorrect) {
+      _score += isCorrect ? 10 : 0;
+      _streak = isCorrect ? _streak + 1 : 0;
+      if (window.parent === window) return; // not inside the classroom platform
+      window.parent.postMessage({
+        source: "mathgame", game: GAME_ID, type: "answer",
+        questionId: qid, question: question, selected: String(selected),
+        correct: isCorrect, score: _score, streak: _streak
+      }, "*");
+    }
+
+    const GOAL_LABELS = {
+      higher_median: "Food truck: choose the higher median rating",
+      more_consistent: "Food truck: choose the smaller range (more consistent)"
+    };
+
+    function selectTruck(choice) {
+      const tacoMed = calcMedian(tacoRatings);
+      const burgerMed = calcMedian(burgerRatings);
+      const tacoRange = calcRange(tacoRatings);
+      const burgerRange = calcRange(burgerRatings);
+
+      let correctTruck = "";
+      if(currentGoal === "higher_median") {
+        if(tacoMed > burgerMed) correctTruck = "taco";
+        else if(burgerMed > tacoMed) correctTruck = "burger";
+        else correctTruck = choice; // tie
+      } else {
+        if(tacoRange < burgerRange) correctTruck = "taco";
+        else if(burgerRange < tacoRange) correctTruck = "burger";
+        else correctTruck = choice; // tie
+      }
+
+      const fb = document.getElementById("feedback");
+      if(choice === correctTruck) {
+        reportAnswer(currentGoal, GOAL_LABELS[currentGoal], choice, true);
+        fb.textContent = `🎉 Correct Choice! Taco (Med: ${tacoMed}, Range: ${tacoRange}) | Burger (Med: ${burgerMed}, Range: ${burgerRange})`;
+        fb.style.color = "#27ae60";
+
+        setTimeout(() => {
+          fb.textContent = "";
+          currentRound++;
+
+          if(currentRound > TOTAL_ROUNDS) {
+            document.getElementById("gameContent").style.display = "none";
+            document.getElementById("congratsScreen").style.display = "block";
+          } else {
+            setupRound();
+          }
+        }, 2200);
+      } else {
+        reportAnswer(currentGoal, GOAL_LABELS[currentGoal], choice, false);
+        fb.textContent = `❌ Not quite! Taco (Med: ${tacoMed}, Range: ${tacoRange}) vs Burger (Med: ${burgerMed}, Range: ${burgerRange}). Compare again!`;
+        fb.style.color = "#c0392b";
+      }
+    }
+
+    function restartGame() {
+      currentRound = 1;
+      document.getElementById("congratsScreen").style.display = "none";
+      document.getElementById("gameContent").style.display = "block";
+      setupRound();
+    }
+
+    setupRound();
+  </script>
+</body>
+</html>

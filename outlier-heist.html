@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Outlier Heist: Impact Comparison 🕵️‍♂️</title>
+  <style>
+    :root {
+      --primary: #2c3e50;
+      --accent: #e74c3c;
+      --success: #2ecc71;
+      --bg: #ecf0f1;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      max-width: 650px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 { color: var(--primary); margin-bottom: 0.5rem; }
+
+    .step-indicator {
+      font-weight: bold;
+      color: #7f8c8d;
+      margin-bottom: 1rem;
+    }
+
+    .data-display {
+      background: #f8f9fa;
+      border: 2px dashed #bdc3c7;
+      padding: 1.2rem;
+      border-radius: 10px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin: 1rem 0;
+      color: #34495e;
+    }
+
+    .outlier-tag {
+      color: var(--accent);
+      background: #fadbd8;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 2px solid var(--accent);
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
+
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 1.5rem 0;
+      text-align: left;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-group label {
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      color: #2c3e50;
+    }
+
+    input[type="number"] {
+      padding: 0.7rem;
+      font-size: 1rem;
+      border: 2px solid #bdc3c7;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .btn {
+      padding: 0.9rem 1.5rem;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      background: var(--primary);
+      width: 100%;
+      transition: 0.2s;
+    }
+
+    .btn:hover { opacity: 0.9; }
+
+    .feedback {
+      font-weight: bold;
+      font-size: 1rem;
+      min-height: 40px;
+      margin-top: 1rem;
+      padding: 10px;
+      border-radius: 8px;
+      white-space: pre-line;
+      display: none;
+    }
+
+    .feedback.correct {
+      display: block;
+      background: #d4edda;
+      color: #155724;
+      border: 2px solid #c3e6cb;
+    }
+
+    .feedback.incorrect {
+      display: block;
+      background: #f8d7da;
+      color: #721c24;
+      border: 2px solid #f5c6cb;
+    }
+
+    /* Comparison Table Styling */
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.5rem;
+    }
+
+    .comp-table th, .comp-table td {
+      border: 1px solid #bdc3c7;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .comp-table th {
+      background: var(--primary);
+      color: white;
+    }
+
+    .highlight-shift {
+      background: #fce4ec;
+      color: #c2185b;
+      font-weight: bold;
+    }
+
+    .highlight-stable {
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>🕵️‍♂️ The Outlier Heist</h1>
+    <div class="step-indicator" id="stepIndicator">Stage 1: Calculate Statistics BEFORE Outlier</div>
+
+    <div class="data-display" id="dataSetDisplay">Loading data...</div>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <label for="userMean">Mean (Average):</label>
+        <input type="number" id="userMean" placeholder="e.g. 12" step="any">
+      </div>
+      <div class="input-group">
+        <label for="userMedian">Median (Middle):</label>
+        <input type="number" id="userMedian" placeholder="e.g. 12" step="any">
+      </div>
+      <div class="input-group">
+        <label for="userMode">Mode (Most Common):</label>
+        <input type="number" id="userMode" placeholder="e.g. 12" step="any">
+      </div>
+      <div class="input-group">
+        <label for="userRange">Range (Max - Min):</label>
+        <input type="number" id="userRange" placeholder="e.g. 10" step="any">
+      </div>
+    </div>
+
+    <button class="btn" id="actionBtn" onclick="checkStage()">Submit Calculations 🔓</button>
+
+    <div id="feedback" class="feedback"></div>
+
+    <div id="comparisonContainer" style="display: none;">
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>Statistic</th>
+            <th>Original Data</th>
+            <th>With Outlier</th>
+            <th>Impact Level</th>
+          </tr>
+        </thead>
+        <tbody id="compTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let baseData = [];
+    let outlierValue = 0;
+    let stage = 1; // Stage 1 = without outlier, Stage 2 = with outlier
+
+    let originalStats = {};
+    let outlierStats = {};
+
+    function generateNewDataset() {
+      baseData = [];
+      // Generate 5 numbers where one number repeats to ensure a clear mode
+      const base = Math.floor(Math.random() * 15) + 5;
+      const modeVal = base + Math.floor(Math.random() * 3);
+      
+      baseData = [
+        base,
+        modeVal,
+        modeVal,
+        base + 4,
+        base + 8
+      ].sort((a,b) => a - b);
+
+      outlierValue = baseData[baseData.length - 1] + 50 + Math.floor(Math.random() * 30);
+      
+      originalStats = calculateAllStats(baseData);
+      
+      let outlierData = [...baseData, outlierValue].sort((a,b) => a - b);
+      outlierStats = calculateAllStats(outlierData);
+
+      stage = 1;
+      renderUI();
+    }
+
+    function calculateAllStats(arr) {
+      let sorted = [...arr].sort((a,b) => a - b);
+      let sum = sorted.reduce((a,b) => a + b, 0);
+      let mean = Math.round((sum / sorted.length) * 10) / 10;
+
+      let mid = Math.floor(sorted.length / 2);
+      let median = sorted.length % 2 === 0 ? (sorted[mid-1] + sorted[mid]) / 2 : sorted[mid];
+
+      let range = sorted[sorted.length - 1] - sorted[0];
+
+      // Mode lookup
+      let counts = {};
+      let maxCount = 0;
+      let mode = sorted[0];
+      sorted.forEach(x => {
+        counts[x] = (counts[x] || 0) + 1;
+        if (counts[x] > maxCount) {
+          maxCount = counts[x];
+          mode = x;
+        }
+      });
+
+      return { mean, median, mode, range };
+    }
+
+    function renderUI() {
+      const displayEl = document.getElementById("dataSetDisplay");
+      const indicatorEl = document.getElementById("stepIndicator");
+      const btnEl = document.getElementById("actionBtn");
+      const compContainer = document.getElementById("comparisonContainer");
+      const fb = document.getElementById("feedback");
+
+      fb.style.display = "none";
+      compContainer.style.display = "none";
+
+      // Clear input values
+      document.getElementById("userMean").value = "";
+      document.getElementById("userMedian").value = "";
+      document.getElementById("userMode").value = "";
+      document.getElementById("userRange").value = "";
+
+      if (stage === 1) {
+        indicatorEl.textContent = "Stage 1: Calculate Statistics BEFORE Outlier";
+        displayEl.innerHTML = baseData.join(", ");
+        btnEl.textContent = "Submit Stage 1 Calculations 🔓";
+      } else if (stage === 2) {
+        indicatorEl.textContent = "Stage 2: Calculate Statistics WITH OUTLIER Added";
+        let fullData = [...baseData, outlierValue].sort((a,b) => a - b);
+        let html = fullData.map(n => n === outlierValue ? `<span class="outlier-tag">${n} (Outlier)</span>` : n).join(", ");
+        displayEl.innerHTML = html;
+        btnEl.textContent = "Compare Results & Analyze Impact 📊";
+      }
+    }
+
+    // ---- Classroom platform reporting (safe to leave in when played standalone) ----
+    const GAME_ID = "outlier-heist";
+    let _score = 0, _streak = 0;
+    function reportAnswer(qid, question, selected, isCorrect) {
+      _score += isCorrect ? 10 : 0;
+      _streak = isCorrect ? _streak + 1 : 0;
+      if (window.parent === window) return; // not inside the classroom platform
+      window.parent.postMessage({
+        source: "mathgame", game: GAME_ID, type: "answer",
+        questionId: qid, question: question, selected: String(selected),
+        correct: isCorrect, score: _score, streak: _streak
+      }, "*");
+    }
+
+    const STAGE_LABELS = {
+      1: "Outlier Heist: mean/median/mode/range BEFORE outlier",
+      2: "Outlier Heist: mean/median/mode/range WITH outlier"
+    };
+
+    function checkStage() {
+      const targetStats = stage === 1 ? originalStats : outlierStats;
+
+      const uMean = parseFloat(document.getElementById("userMean").value);
+      const uMedian = parseFloat(document.getElementById("userMedian").value);
+      const uMode = parseFloat(document.getElementById("userMode").value);
+      const uRange = parseFloat(document.getElementById("userRange").value);
+
+      const fb = document.getElementById("feedback");
+
+      if (isNaN(uMean) || isNaN(uMedian) || isNaN(uMode) || isNaN(uRange)) {
+        fb.textContent = "Please fill in all 4 calculations before submitting!";
+        fb.className = "feedback incorrect";
+        return;
+      }
+
+      const meanOk = Math.abs(uMean - targetStats.mean) <= 0.1;
+      const medianOk = uMedian === targetStats.median;
+      const modeOk = uMode === targetStats.mode;
+      const rangeOk = uRange === targetStats.range;
+
+      if (meanOk && medianOk && modeOk && rangeOk) {
+        reportAnswer(stage, STAGE_LABELS[stage], "all correct", true);
+        if (stage === 1) {
+          fb.textContent = "🎉 Stage 1 Complete! Now, let's inject a huge outlier into the same dataset!";
+          fb.className = "feedback correct";
+          setTimeout(() => {
+            stage = 2;
+            renderUI();
+          }, 2000);
+        } else {
+          fb.textContent = "🎉 Stage 2 Complete! Compare the stats below to see which values changed most!";
+          fb.className = "feedback correct";
+          showComparisonTable();
+        }
+      } else {
+        let errors = [];
+        if (!meanOk) errors.push(`Mean (${targetStats.mean})`);
+        if (!medianOk) errors.push(`Median (${targetStats.median})`);
+        if (!modeOk) errors.push(`Mode (${targetStats.mode})`);
+        if (!rangeOk) errors.push(`Range (${targetStats.range})`);
+
+        reportAnswer(stage, STAGE_LABELS[stage], "wrong: " + errors.map(e => e.split(" ")[0]).join(", "), false);
+        fb.textContent = `❌ Check these calculations: ${errors.join(", ")}`;
+        fb.className = "feedback incorrect";
+      }
+    }
+
+    function showComparisonTable() {
+      const compContainer = document.getElementById("comparisonContainer");
+      const tbody = document.getElementById("compTableBody");
+      const btnEl = document.getElementById("actionBtn");
+
+      tbody.innerHTML = `
+        <tr>
+          <td><strong>Mean</strong></td>
+          <td>${originalStats.mean}</td>
+          <td class="highlight-shift">${outlierStats.mean}</td>
+          <td class="highlight-shift">🚨 HIGH IMPACT</td>
+        </tr>
+        <tr>
+          <td><strong>Median</strong></td>
+          <td>${originalStats.median}</td>
+          <td class="highlight-stable">${outlierStats.median}</td>
+          <td class="highlight-stable">✅ STABLE</td>
+        </tr>
+        <tr>
+          <td><strong>Mode</strong></td>
+          <td>${originalStats.mode}</td>
+          <td class="highlight-stable">${outlierStats.mode}</td>
+          <td class="highlight-stable">✅ STABLE</td>
+        </tr>
+        <tr>
+          <td><strong>Range</strong></td>
+          <td>${originalStats.range}</td>
+          <td class="highlight-shift">${outlierStats.range}</td>
+          <td class="highlight-shift">🚨 HIGH IMPACT</td>
+        </tr>
+      `;
+
+      compContainer.style.display = "block";
+
+      btnEl.textContent = "Play Next Round 🔄";
+      btnEl.onclick = function() {
+        btnEl.onclick = checkStage;
+        generateNewDataset();
+      };
+    }
+
+    // Initialize first round
+    generateNewDataset();
+  </script>
+
+</body>
+</html>

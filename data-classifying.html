@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Classifier Quest! 📊 Spark Your Math Power!</title>
+  <style>
+    :root {
+      --primary: #6c5ce7;
+      --secondary: #a29bfe;
+      --accent: #fd79a8;
+      --correct: #00b894;
+      --incorrect: #d63031;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #2d3436;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--text);
+    }
+
+    .container {
+      background-color: var(--card-bg);
+      padding: 2.5rem;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+      width: 90%;
+      max-width: 650px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    h1 {
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+
+    .stats-bar {
+      display: flex;
+      justify-content: space-around;
+      background: #f1f2f6;
+      padding: 0.8rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      font-weight: bold;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .question-box {
+      background-color: #eef2f7;
+      border-left: 6px solid var(--primary);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .guide-box {
+      background-color: #fff8e7;
+      border: 1px dashed #ffe082;
+      border-radius: 10px;
+      padding: 0.8rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    .guide-box summary {
+      cursor: pointer;
+      font-weight: bold;
+      color: #f57c00;
+    }
+
+    .guide-box ul {
+      margin: 0.5rem 0 0 0;
+      padding-left: 1.2rem;
+    }
+
+    .input-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    select {
+      width: 100%;
+      padding: 0.9rem;
+      font-size: 1rem;
+      border: 2px solid #dfe6e9;
+      border-radius: 10px;
+      outline: none;
+      box-sizing: border-box;
+      background-color: #fff;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s, background-color 0.3s;
+    }
+
+    .btn:hover {
+      background-color: #5b4bc4;
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .feedback-box {
+      min-height: 80px;
+      padding: 1rem;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.05rem;
+      display: none;
+      white-space: pre-line;
+    }
+
+    .feedback-box.correct {
+      display: flex;
+      background-color: #e6f9f5;
+      color: var(--correct);
+      border: 2px solid var(--correct);
+    }
+
+    .feedback-box.incorrect {
+      display: flex;
+      background-color: #fdeaea;
+      color: var(--incorrect);
+      border: 2px solid var(--incorrect);
+      animation: shake 0.4s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <canvas id="confetti"></canvas>
+    <h1>📊 Data Classifier Quest</h1>
+    
+    <div class="stats-bar">
+      <div class="stat-item">⭐ Score: <span id="score">0</span></div>
+      <div class="stat-item">🔥 Streak: <span id="streak">0</span></div>
+    </div>
+
+    <div class="question-box" id="question">
+      Loading question...
+    </div>
+
+    <details class="guide-box">
+      <summary>💡 Need a quick memory refresher?</summary>
+      <ul>
+        <li><strong>Categorical Nominal:</strong> Labels or names with <em>no order</em> (e.g., eye color).</li>
+        <li><strong>Categorical Ordinal:</strong> Categories with a <em>natural order</em> (e.g., shirt sizes: S, M, L).</li>
+        <li><strong>Numerical Discrete:</strong> Whole numbers that you <em>count</em> (e.g., number of pets).</li>
+        <li><strong>Numerical Continuous:</strong> Measurements that can take <em>any value or decimal</em> (e.g., height, weight).</li>
+      </ul>
+    </details>
+
+    <div class="input-section">
+      <select id="answerInput">
+        <option value="none">-- Select Data Type --</option>
+        <option value="nominal">Categorical Nominal</option>
+        <option value="ordinal">Categorical Ordinal</option>
+        <option value="discrete">Numerical Discrete</option>
+        <option value="continuous">Numerical Continuous</option>
+      </select>
+      
+      <button class="btn" id="checkBtn" onclick="checkAnswer()">Check Answer</button>
+    </div>
+
+    <div class="feedback-box" id="feedback"></div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        text: "1. The number of students absent in your class today.",
+        correct: "discrete",
+        feedback: {
+          nominal: "Hold on! Counting students isn't just a label or name,\nDiscrete whole numbers are the rule of this game!",
+          ordinal: "No order of sizes or ranks to be found,\nJust whole numbers of kids floating around!",
+          continuous: "You can't have half a student walking through the door,\nDiscrete means exact whole numbers, nothing more!"
+        }
+      },
+      {
+        text: "2. The exact height of a sunflower growing in the garden (in cm).",
+        correct: "continuous",
+        feedback: {
+          nominal: "Height isn't a word or a simple name tag,\nIt's continuous measurement, so don't let your mind lag!",
+          ordinal: "No low, medium, high ranking here today,\nWe measure exact height along the way!",
+          discrete: "It grows continuously, with decimals so fine,\nIt isn't discrete, but continuous on a line!"
+        }
+      },
+      {
+        text: "3. Your favorite flavor of ice cream (e.g., Chocolate, Vanilla, Strawberry).",
+        correct: "nominal",
+        feedback: {
+          ordinal: "Yum! But Vanilla isn't 'better' in order or rank,\nIt's just nominal categories, to be plain and frank!",
+          discrete: "No numbers to count in a tasty sweet scoop,\nNominal categories define this group!",
+          continuous: "You can't measure flavor on a ruler or scale,\nNominal labels are what tell the tale!"
+        }
+      },
+      {
+        text: "4. Finishing positions in a swimming race (1st, 2nd, 3rd place).",
+        correct: "ordinal",
+        feedback: {
+          nominal: "Wait! 1st, 2nd, and 3rd have a clear ordered place,\nIt's Categorical Ordinal when ranking a race!",
+          discrete: "These are ranked labels, not values to add,\nOrdinal order makes your teacher glad!",
+          continuous: "It's not about the continuous time on a clock,\nIt's the order they placed when jumping off the block!"
+        }
+      },
+      {
+        text: "5. The mass of an apple (e.g., 142.5 grams).",
+        correct: "continuous",
+        feedback: {
+          nominal: "Gram weights are numbers, not words or a label,\nContinuous decimals belong on this table!",
+          ordinal: "No ranks like small, medium, or large in sight,\nContinuous numbers measure exact mass right!",
+          discrete: "Scales give decimals that constantly flow,\nContinuous numbers make your score grow!"
+        }
+      },
+      {
+        text: "6. The number of goals scored in a soccer match.",
+        correct: "discrete",
+        feedback: {
+          nominal: "Goals aren't just labels, they are counted with pride,\nNumerical discrete is the proper guide!",
+          ordinal: "No order of categories here to see,\nJust whole numbers counted as 1, 2, or 3!",
+          continuous: "You can't score 2.3 goals in a game,\nDiscrete whole numbers take the fame!"
+        }
+      },
+      {
+        text: "7. Shirt size tags (Small, Medium, Large, Extra Large).",
+        correct: "ordinal",
+        feedback: {
+          nominal: "Small, Medium, Large follow an ordered size flow,\nOrdinal categories are the way to go!",
+          discrete: "These are word categories, not numbers to count,\nOrdinal size order is what counts!",
+          continuous: "No decimals measured with centimeters here,\nJust category sizes ranked bright and clear!"
+        }
+      }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let streak = 0;
+
+    const questionEl = document.getElementById("question");
+    const answerInput = document.getElementById("answerInput");
+    const feedbackEl = document.getElementById("feedback");
+    const scoreEl = document.getElementById("score");
+    const streakEl = document.getElementById("streak");
+
+    function loadQuestion() {
+      const q = questions[currentQuestionIndex];
+      questionEl.textContent = q.text;
+      answerInput.value = "none";
+      feedbackEl.style.display = "none";
+      feedbackEl.textContent = "";
+    }
+
+        // ---- Classroom platform reporting (safe to leave in when played standalone) ----
+    const GAME_ID = "data-classifying";
+    function reportAnswer(q, selected, isCorrect) {
+      if (window.parent === window) return; // not inside the classroom platform
+      window.parent.postMessage({
+        source: "mathgame", game: GAME_ID, type: "answer",
+        questionId: currentQuestionIndex + 1,
+        question: q.text, selected: selected, correct: isCorrect,
+        score: score, streak: streak
+      }, "*");
+    }
+
+    function checkAnswer() {
+      const selectedValue = answerInput.value;
+      const currentQ = questions[currentQuestionIndex];
+
+      if (selectedValue === "none") {
+        feedbackEl.textContent = "Please select an option from the menu first!";
+        feedbackEl.className = "feedback-box incorrect";
+        feedbackEl.style.display = "flex";
+        return;
+      }
+
+      if (selectedValue === currentQ.correct) {
+        score += 10;
+        streak += 1;
+        scoreEl.textContent = score;
+        streakEl.textContent = streak;
+
+        reportAnswer(currentQ, selectedValue, true);
+        feedbackEl.textContent = "🎉 Correct! Fantastic job! Loading next question...";
+        feedbackEl.className = "feedback-box correct";
+        feedbackEl.style.display = "flex";
+        triggerConfetti();
+
+        setTimeout(() => {
+          currentQuestionIndex = (currentQuestionIndex + 1) % questions.length;
+          loadQuestion();
+        }, 1800);
+
+      } else {
+        streak = 0;
+        streakEl.textContent = streak;
+
+        reportAnswer(currentQ, selectedValue, false);
+        // Directly lookup the rhyme for the selected wrong answer
+        const targetedRhyme = currentQ.feedback[selectedValue];
+        
+        feedbackEl.textContent = "❌ " + targetedRhyme;
+        feedbackEl.className = "feedback-box incorrect";
+        feedbackEl.style.display = "flex";
+      }
+    }
+
+    // Confetti animation
+    function triggerConfetti() {
+      const canvas = document.getElementById('confetti');
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+
+      const particles = [];
+      const colors = ['#6c5ce7', '#00b894', '#fd79a8', '#ffeaa7', '#0984e3'];
+
+      for (let i = 0; i < 40; i++) {
+        particles.push({
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.5) * 12 - 4,
+          size: Math.random() * 6 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 40
+        });
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let active = false;
+
+        particles.forEach(p => {
+          if (p.life > 0) {
+            active = true;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.2;
+            p.life--;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+          }
+        });
+
+        if (active) requestAnimationFrame(animate);
+      }
+
+      animate();
+    }
+
+    // Initialize first question
+    loadQuestion();
+  </script>
+
+</body>
+</html>

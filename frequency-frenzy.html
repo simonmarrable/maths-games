@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frequency Frenzy: Sector Graphs 🍕📊</title>
+  <style>
+    :root {
+      --primary: #8e44ad;
+      --primary-dark: #71368a;
+      --bg: #f4f6f7;
+      --card-bg: #ffffff;
+      --text: #2c3e50;
+      --success: #2ecc71;
+      --error: #e74c3c;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 650px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
+      box-sizing: border-radius;
+    }
+
+    h1 {
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .survey-select-container {
+      margin-bottom: 1.2rem;
+    }
+
+    select {
+      padding: 0.6rem 1rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 2px solid #bdc3c7;
+      background: white;
+      font-weight: bold;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .chart-container {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      margin: 1.2rem auto;
+      background: #e0e0e0;
+      transition: background 0.5s ease;
+      border: 4px solid var(--text);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .formula-hint {
+      background: #f3e5f5;
+      border-left: 5px solid var(--primary);
+      padding: 0.8rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      margin-bottom: 1.2rem;
+      text-align: left;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+
+    th, td {
+      border: 1px solid #bdc3c7;
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background: var(--primary);
+      color: white;
+    }
+
+    input[type="number"] {
+      width: 80px;
+      padding: 6px;
+      text-align: center;
+      font-size: 1rem;
+      border: 2px solid #bdc3c7;
+      border-radius: 6px;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: #7f8c8d;
+    }
+
+    .btn-secondary:hover {
+      background: #626567;
+    }
+
+    .feedback {
+      margin-top: 1.2rem;
+      font-weight: bold;
+      font-size: 1.1rem;
+      min-height: 40px;
+      padding: 10px;
+      border-radius: 8px;
+      white-space: pre-line;
+    }
+
+    .feedback.correct {
+      background: #e8f8f5;
+      color: #117a65;
+      border: 2px solid #117a65;
+    }
+
+    .feedback.incorrect {
+      background: #fadbd8;
+      color: #78281f;
+      border: 2px solid #78281f;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>📊 Sector Graph Creator</h1>
+    <p>Convert frequency tables into 360° sector graphs!</p>
+
+    <div class="survey-select-container">
+      <label for="datasetSelect"><strong>Choose Survey Dataset: </strong></label>
+      <select id="datasetSelect" onchange="switchDataset(this.value)">
+        <option value="0">1. Favorite Pizza Toppings (Total: 10)</option>
+        <option value="1">2. Most Popular Sports (Total: 20)</option>
+        <option value="2">3. Gaming Platform Preferences (Total: 12)</option>
+      </select>
+    </div>
+
+    <div class="formula-hint">
+      💡 <strong>Stage 4 Math Rule:</strong><br>
+      $$\text{Sector Angle (°)} = \frac{\text{Frequency}}{\text{Total Frequency}} \times 360^\circ$$
+    </div>
+
+    <div class="chart-container" id="pieChart"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Frequency</th>
+          <th>Sector Angle (°)</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+
+    <div class="btn-group">
+      <button class="btn" onclick="checkAngles()">Build Pie Chart 🎨</button>
+      <button class="btn btn-secondary" onclick="nextDataset()">Next Survey ➡️</button>
+    </div>
+
+    <div id="feedback" class="feedback" style="display: none;"></div>
+  </div>
+
+  <script>
+    const datasets = [
+      {
+        title: "Favorite Pizza Toppings",
+        total: 10,
+        items: [
+          { name: "Pepperoni", freq: 5, color: "#e74c3c" },
+          { name: "Cheese", freq: 3, color: "#f1c40f" },
+          { name: "Veggie", freq: 2, color: "#2ecc71" }
+        ]
+      },
+      {
+        title: "Most Popular Sports",
+        total: 20,
+        items: [
+          { name: "Soccer", freq: 8, color: "#3498db" },
+          { name: "Basketball", freq: 6, color: "#e67e22" },
+          { name: "Netball", freq: 4, color: "#9b59b6" },
+          { name: "Swimming", freq: 2, color: "#1abc9c" }
+        ]
+      },
+      {
+        title: "Gaming Platform Preferences",
+        total: 12,
+        items: [
+          { name: "PlayStation", freq: 4, color: "#2980b9" },
+          { name: "Xbox", freq: 3, color: "#27ae60" },
+          { name: "Nintendo Switch", freq: 3, color: "#c0392b" },
+          { name: "PC", freq: 2, color: "#8e44ad" }
+        ]
+      }
+    ];
+
+    let currentDatasetIndex = 0;
+
+    function loadTable() {
+      const current = datasets[currentDatasetIndex];
+      const tbody = document.getElementById("tableBody");
+      const pie = document.getElementById("pieChart");
+      const feedbackEl = document.getElementById("feedback");
+
+      tbody.innerHTML = "";
+      pie.style.background = "#e0e0e0"; // Reset pie chart to blank gray
+      feedbackEl.style.display = "none";
+      feedbackEl.textContent = "";
+
+      current.items.forEach((item, idx) => {
+        tbody.innerHTML += `
+          <tr>
+            <td style="font-weight:bold; color:${item.color};">${item.name}</td>
+            <td>${item.freq} / ${current.total}</td>
+            <td><input type="number" id="angle_${idx}" placeholder="Angle °" /></td>
+          </tr>
+        `;
+      });
+    }
+
+    function switchDataset(index) {
+      currentDatasetIndex = parseInt(index);
+      loadTable();
+    }
+
+    function nextDataset() {
+      currentDatasetIndex = (currentDatasetIndex + 1) % datasets.length;
+      document.getElementById("datasetSelect").value = currentDatasetIndex;
+      loadTable();
+    }
+
+    // ---- Classroom platform reporting (safe to leave in when played standalone) ----
+    const GAME_ID = "frequency-frenzy";
+    let _score = 0, _streak = 0;
+    function reportAnswer(qid, question, selected, isCorrect) {
+      _score += isCorrect ? 10 : 0;
+      _streak = isCorrect ? _streak + 1 : 0;
+      if (window.parent === window) return; // not inside the classroom platform
+      window.parent.postMessage({
+        source: "mathgame", game: GAME_ID, type: "answer",
+        questionId: qid, question: question, selected: String(selected),
+        correct: isCorrect, score: _score, streak: _streak
+      }, "*");
+    }
+
+    function checkAngles() {
+      const current = datasets[currentDatasetIndex];
+      let allCorrect = true;
+      const wrongNames = [];
+      let currentAngleSum = 0;
+      let gradientStops = [];
+
+      current.items.forEach((item, idx) => {
+        const inputEl = document.getElementById(`angle_${idx}`);
+        const userAngle = parseFloat(inputEl.value);
+        const expectedAngle = (item.freq / current.total) * 360;
+
+        // Check angle accuracy allowing small tolerance
+        if (isNaN(userAngle) || Math.abs(userAngle - expectedAngle) > 0.5) {
+          allCorrect = false;
+          wrongNames.push(item.name);
+        }
+
+        let start = currentAngleSum;
+        let angleVal = isNaN(userAngle) ? 0 : userAngle;
+        currentAngleSum += angleVal;
+        gradientStops.push(`${item.color} ${start}deg ${currentAngleSum}deg`);
+      });
+
+      const pie = document.getElementById("pieChart");
+      const fb = document.getElementById("feedback");
+      fb.style.display = "block";
+      reportAnswer(currentDatasetIndex + 1, "Sector angles: " + current.title, allCorrect ? "all correct" : "wrong: " + wrongNames.join(", "), allCorrect);
+
+      if (allCorrect) {
+        pie.style.background = `conic-gradient(${gradientStops.join(", ")})`;
+        fb.className = "feedback correct";
+        fb.textContent = `🎉 Excellent! You correctly calculated all sector angles for the "${current.title}" survey!\nPress "Next Survey" to try the next dataset.`;
+      } else {
+        fb.className = "feedback incorrect";
+        fb.textContent = `❌ Some sector angles are incorrect or missing!\nRemember: Multiply each frequency fraction by 360°.\n(e.g., Frequency ÷ Total × 360)`;
+      }
+    }
+
+    // Initialize first dataset
+    loadTable();
+  </script>
+
+</body>
+</html>
