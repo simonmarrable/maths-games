@@ -70,6 +70,21 @@
   </div>
 
   <script>
+
+    // ---- Reports each answer to the classroom page (for teacher tracking) ----
+    function reportAnswer(gameId, qid, question, selected, correct, score, streak) {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            source: "mathgame", type: "answer", game: gameId,
+            questionId: qid, question: question, selected: String(selected),
+            correct: !!correct, score: score, streak: streak
+          }, "*");
+        }
+      } catch (e) {}
+    }
+
+    let ftScore = 0, ftStreak = 0;
     let tacoRatings = [];
     let burgerRatings = [];
     let currentGoal = ""; 
@@ -106,25 +121,6 @@
       document.getElementById("progressFill").style.width = `${((currentRound - 1) / TOTAL_ROUNDS) * 100}%`;
     }
 
-    // ---- Classroom platform reporting (safe to leave in when played standalone) ----
-    const GAME_ID = "food-truck";
-    let _score = 0, _streak = 0;
-    function reportAnswer(qid, question, selected, isCorrect) {
-      _score += isCorrect ? 10 : 0;
-      _streak = isCorrect ? _streak + 1 : 0;
-      if (window.parent === window) return; // not inside the classroom platform
-      window.parent.postMessage({
-        source: "mathgame", game: GAME_ID, type: "answer",
-        questionId: qid, question: question, selected: String(selected),
-        correct: isCorrect, score: _score, streak: _streak
-      }, "*");
-    }
-
-    const GOAL_LABELS = {
-      higher_median: "Food truck: choose the higher median rating",
-      more_consistent: "Food truck: choose the smaller range (more consistent)"
-    };
-
     function selectTruck(choice) {
       const tacoMed = calcMedian(tacoRatings);
       const burgerMed = calcMedian(burgerRatings);
@@ -144,9 +140,10 @@
 
       const fb = document.getElementById("feedback");
       if(choice === correctTruck) {
-        reportAnswer(currentGoal, GOAL_LABELS[currentGoal], choice, true);
         fb.textContent = `🎉 Correct Choice! Taco (Med: ${tacoMed}, Range: ${tacoRange}) | Burger (Med: ${burgerMed}, Range: ${burgerRange})`;
         fb.style.color = "#27ae60";
+        ftScore += 10; ftStreak++;
+        reportAnswer("food-truck", currentGoal, document.getElementById("scenarioText").textContent, choice, true, ftScore, ftStreak);
 
         setTimeout(() => {
           fb.textContent = "";
@@ -160,9 +157,10 @@
           }
         }, 2200);
       } else {
-        reportAnswer(currentGoal, GOAL_LABELS[currentGoal], choice, false);
         fb.textContent = `❌ Not quite! Taco (Med: ${tacoMed}, Range: ${tacoRange}) vs Burger (Med: ${burgerMed}, Range: ${burgerRange}). Compare again!`;
         fb.style.color = "#c0392b";
+        ftStreak = 0;
+        reportAnswer("food-truck", currentGoal, document.getElementById("scenarioText").textContent, choice, false, ftScore, ftStreak);
       }
     }
 

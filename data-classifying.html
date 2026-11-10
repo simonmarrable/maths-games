@@ -292,6 +292,20 @@
       }
     ];
 
+
+    // ---- Reports each answer to the classroom page (for teacher tracking) ----
+    function reportAnswer(gameId, qid, question, selected, correct, score, streak) {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            source: "mathgame", type: "answer", game: gameId,
+            questionId: qid, question: question, selected: String(selected),
+            correct: !!correct, score: score, streak: streak
+          }, "*");
+        }
+      } catch (e) {}
+    }
+
     let currentQuestionIndex = 0;
     let score = 0;
     let streak = 0;
@@ -308,18 +322,6 @@
       answerInput.value = "none";
       feedbackEl.style.display = "none";
       feedbackEl.textContent = "";
-    }
-
-        // ---- Classroom platform reporting (safe to leave in when played standalone) ----
-    const GAME_ID = "data-classifying";
-    function reportAnswer(q, selected, isCorrect) {
-      if (window.parent === window) return; // not inside the classroom platform
-      window.parent.postMessage({
-        source: "mathgame", game: GAME_ID, type: "answer",
-        questionId: currentQuestionIndex + 1,
-        question: q.text, selected: selected, correct: isCorrect,
-        score: score, streak: streak
-      }, "*");
     }
 
     function checkAnswer() {
@@ -339,7 +341,7 @@
         scoreEl.textContent = score;
         streakEl.textContent = streak;
 
-        reportAnswer(currentQ, selectedValue, true);
+        reportAnswer("data-classifying", "q" + (currentQuestionIndex + 1), currentQ.text, selectedValue, true, score, streak);
         feedbackEl.textContent = "🎉 Correct! Fantastic job! Loading next question...";
         feedbackEl.className = "feedback-box correct";
         feedbackEl.style.display = "flex";
@@ -354,7 +356,7 @@
         streak = 0;
         streakEl.textContent = streak;
 
-        reportAnswer(currentQ, selectedValue, false);
+        reportAnswer("data-classifying", "q" + (currentQuestionIndex + 1), currentQ.text, selectedValue, false, score, streak);
         // Directly lookup the rhyme for the selected wrong answer
         const targetedRhyme = currentQ.feedback[selectedValue];
         

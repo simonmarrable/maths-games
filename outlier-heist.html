@@ -210,6 +210,21 @@
   </div>
 
   <script>
+
+    // ---- Reports each answer to the classroom page (for teacher tracking) ----
+    function reportAnswer(gameId, qid, question, selected, correct, score, streak) {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            source: "mathgame", type: "answer", game: gameId,
+            questionId: qid, question: question, selected: String(selected),
+            correct: !!correct, score: score, streak: streak
+          }, "*");
+        }
+      } catch (e) {}
+    }
+
+    let ohScore = 0, ohStreak = 0;
     let baseData = [];
     let outlierValue = 0;
     let stage = 1; // Stage 1 = without outlier, Stage 2 = with outlier
@@ -296,25 +311,6 @@
       }
     }
 
-    // ---- Classroom platform reporting (safe to leave in when played standalone) ----
-    const GAME_ID = "outlier-heist";
-    let _score = 0, _streak = 0;
-    function reportAnswer(qid, question, selected, isCorrect) {
-      _score += isCorrect ? 10 : 0;
-      _streak = isCorrect ? _streak + 1 : 0;
-      if (window.parent === window) return; // not inside the classroom platform
-      window.parent.postMessage({
-        source: "mathgame", game: GAME_ID, type: "answer",
-        questionId: qid, question: question, selected: String(selected),
-        correct: isCorrect, score: _score, streak: _streak
-      }, "*");
-    }
-
-    const STAGE_LABELS = {
-      1: "Outlier Heist: mean/median/mode/range BEFORE outlier",
-      2: "Outlier Heist: mean/median/mode/range WITH outlier"
-    };
-
     function checkStage() {
       const targetStats = stage === 1 ? originalStats : outlierStats;
 
@@ -336,8 +332,12 @@
       const modeOk = uMode === targetStats.mode;
       const rangeOk = uRange === targetStats.range;
 
+      const wrongStats = [!meanOk && "Mean", !medianOk && "Median", !modeOk && "Mode", !rangeOk && "Range"].filter(Boolean).join(", ");
+      const allOk = meanOk && medianOk && modeOk && rangeOk;
+      if (allOk) { ohScore += 10; ohStreak++; } else { ohStreak = 0; }
+      reportAnswer("outlier-heist", "stage" + stage, stage === 1 ? "Stage 1: stats before the outlier" : "Stage 2: stats with the outlier", allOk ? "all correct" : "wrong: " + wrongStats, allOk, ohScore, ohStreak);
+
       if (meanOk && medianOk && modeOk && rangeOk) {
-        reportAnswer(stage, STAGE_LABELS[stage], "all correct", true);
         if (stage === 1) {
           fb.textContent = "🎉 Stage 1 Complete! Now, let's inject a huge outlier into the same dataset!";
           fb.className = "feedback correct";
@@ -357,7 +357,6 @@
         if (!modeOk) errors.push(`Mode (${targetStats.mode})`);
         if (!rangeOk) errors.push(`Range (${targetStats.range})`);
 
-        reportAnswer(stage, STAGE_LABELS[stage], "wrong: " + errors.map(e => e.split(" ")[0]).join(", "), false);
         fb.textContent = `❌ Check these calculations: ${errors.join(", ")}`;
         fb.className = "feedback incorrect";
       }

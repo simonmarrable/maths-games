@@ -238,6 +238,21 @@
       }
     ];
 
+
+    // ---- Reports each answer to the classroom page (for teacher tracking) ----
+    function reportAnswer(gameId, qid, question, selected, correct, score, streak) {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            source: "mathgame", type: "answer", game: gameId,
+            questionId: qid, question: question, selected: String(selected),
+            correct: !!correct, score: score, streak: streak
+          }, "*");
+        }
+      } catch (e) {}
+    }
+
+    let ffScore = 0, ffStreak = 0;
     let currentDatasetIndex = 0;
 
     function loadTable() {
@@ -273,24 +288,9 @@
       loadTable();
     }
 
-    // ---- Classroom platform reporting (safe to leave in when played standalone) ----
-    const GAME_ID = "frequency-frenzy";
-    let _score = 0, _streak = 0;
-    function reportAnswer(qid, question, selected, isCorrect) {
-      _score += isCorrect ? 10 : 0;
-      _streak = isCorrect ? _streak + 1 : 0;
-      if (window.parent === window) return; // not inside the classroom platform
-      window.parent.postMessage({
-        source: "mathgame", game: GAME_ID, type: "answer",
-        questionId: qid, question: question, selected: String(selected),
-        correct: isCorrect, score: _score, streak: _streak
-      }, "*");
-    }
-
     function checkAngles() {
       const current = datasets[currentDatasetIndex];
       let allCorrect = true;
-      const wrongNames = [];
       let currentAngleSum = 0;
       let gradientStops = [];
 
@@ -302,7 +302,6 @@
         // Check angle accuracy allowing small tolerance
         if (isNaN(userAngle) || Math.abs(userAngle - expectedAngle) > 0.5) {
           allCorrect = false;
-          wrongNames.push(item.name);
         }
 
         let start = currentAngleSum;
@@ -314,7 +313,10 @@
       const pie = document.getElementById("pieChart");
       const fb = document.getElementById("feedback");
       fb.style.display = "block";
-      reportAnswer(currentDatasetIndex + 1, "Sector angles: " + current.title, allCorrect ? "all correct" : "wrong: " + wrongNames.join(", "), allCorrect);
+
+      const entered = current.items.map((_, i) => document.getElementById("angle_" + i).value || "blank").join(", ");
+      if (allCorrect) { ffScore += 10; ffStreak++; } else { ffStreak = 0; }
+      reportAnswer("frequency-frenzy", "survey-" + (currentDatasetIndex + 1), "Sector angles: " + current.title, entered, allCorrect, ffScore, ffStreak);
 
       if (allCorrect) {
         pie.style.background = `conic-gradient(${gradientStops.join(", ")})`;

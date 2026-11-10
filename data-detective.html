@@ -65,6 +65,22 @@
   </div>
 
   <script>
+
+    // ---- Reports each answer to the classroom page (for teacher tracking) ----
+    function reportAnswer(gameId, qid, question, selected, correct, score, streak) {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            source: "mathgame", type: "answer", game: gameId,
+            questionId: qid, question: question, selected: String(selected),
+            correct: !!correct, score: score, streak: streak
+          }, "*");
+        }
+      } catch (e) {}
+    }
+
+    const LABELS = { count: "Count values at or above a threshold", range: "Range", median: "Median", mode: "Mode" };
+    let dsScore = 0, dsStreak = 0;
     let dataset = [];
     let currentQuestion = {};
     let questionCount = 1;
@@ -153,27 +169,6 @@
       document.getElementById("progressFill").style.width = `${((questionCount - 1) / TOTAL_QUESTIONS) * 100}%`;
     }
 
-    // ---- Classroom platform reporting (safe to leave in when played standalone) ----
-    const GAME_ID = "data-detective";
-    let _score = 0, _streak = 0;
-    function reportAnswer(qid, question, selected, isCorrect) {
-      _score += isCorrect ? 10 : 0;
-      _streak = isCorrect ? _streak + 1 : 0;
-      if (window.parent === window) return; // not inside the classroom platform
-      window.parent.postMessage({
-        source: "mathgame", game: GAME_ID, type: "answer",
-        questionId: qid, question: question, selected: String(selected),
-        correct: isCorrect, score: _score, streak: _streak
-      }, "*");
-    }
-
-    const Q_LABELS = {
-      count: "Stem-and-leaf: count values above a threshold",
-      range: "Stem-and-leaf: find the range",
-      median: "Stem-and-leaf: find the median",
-      mode: "Stem-and-leaf: find the mode"
-    };
-
     function check() {
       const userVal = parseFloat(document.getElementById("answerInput").value);
       const fb = document.getElementById("feedback");
@@ -185,7 +180,8 @@
       }
 
       if(Math.abs(userVal - currentQuestion.ans) < 0.1) {
-        reportAnswer(currentQuestion.type, Q_LABELS[currentQuestion.type], userVal, true);
+        dsScore += 10; dsStreak++;
+        reportAnswer("data-detective", currentQuestion.type, "Stem-and-leaf: " + LABELS[currentQuestion.type], userVal, true, dsScore, dsStreak);
         fb.textContent = "🎉 Correct! Detective clue solved!";
         fb.style.color = "#27ae60";
 
@@ -202,7 +198,8 @@
           }
         }, 1500);
       } else {
-        reportAnswer(currentQuestion.type, Q_LABELS[currentQuestion.type], userVal, false);
+        dsStreak = 0;
+        reportAnswer("data-detective", currentQuestion.type, "Stem-and-leaf: " + LABELS[currentQuestion.type], userVal, false, dsScore, dsStreak);
         fb.textContent = `❌ Incorrect. Re-check the plot stems and leaves!`;
         fb.style.color = "#c0392b";
       }
